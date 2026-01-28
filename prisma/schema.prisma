@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senha     String
+  tipo      String   // "admin" ou "parceiro"
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+  
+  // Relacionamentos
+  parceiro  Parceiro?
+}
+
+model Parceiro {
+  id              Int      @id @default(autoincrement())
+  usuarioId       Int      @unique
+  telefone        String?
+  percentual      Float    @default(50.0) // Percentual do parceiro na venda
+  criadoEm        DateTime @default(now())
+  
+  // Relacionamentos
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  pecas           Peca[]
+  pagamentos      Pagamento[]
+}
+
+model Marca {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+  
+  // Relacionamentos
+  pecas     Peca[]
+}
+
+model Tamanho {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  ordem     Int      @default(0) // Para ordenar os tamanhos (RN, P, M, G, etc)
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+  
+  // Relacionamentos
+  pecas     Peca[]
+}
+
+model Peca {
+  id              Int      @id @default(autoincrement())
+  codigoEtiqueta  String   @unique
+  dataEntrada     DateTime @default(now())
+  valorCusto      Float
+  valorVenda      Float
+  status          String   @default("disponivel") // "disponivel", "vendida", "curadoria"
+  fotos           String[] // Array de URLs das fotos
+  observacoes     String?
+  
+  // Relacionamentos
+  parceiroId      Int
+  marcaId         Int
+  tamanhoId       Int
+  
+  parceiro        Parceiro @relation(fields: [parceiroId], references: [id])
+  marca           Marca    @relation(fields: [marcaId], references: [id])
+  tamanho         Tamanho  @relation(fields: [tamanhoId], references: [id])
+  
+  // Venda
+  vendas          Venda[]
+  
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+}
+
+model Venda {
+  id              Int      @id @default(autoincrement())
+  dataVenda       DateTime @default(now())
+  valorVendido    Float
+  
+  // Relacionamentos
+  pecaId          Int
+  peca            Peca     @relation(fields: [pecaId], references: [id])
+  
+  pagamento       Pagamento?
+  
+  criadoEm        DateTime @default(now())
+}
+
+model Pagamento {
+  id              Int      @id @default(autoincrement())
+  vendaId         Int      @unique
+  parceiroId      Int
+  valorParceiro   Float
+  percentual      Float
+  pago            Boolean  @default(false)
+  dataPagamento   DateTime?
+  observacoes     String?
+  
+  // Relacionamentos
+  venda           Venda    @relation(fields: [vendaId], references: [id])
+  parceiro        Parceiro @relation(fields: [parceiroId], references: [id])
+  
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+}
